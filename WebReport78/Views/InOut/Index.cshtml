@@ -1,8 +1,16 @@
-﻿
- @model List<WebReport78.Models.DbWeSmart>
+﻿@model List<WebReport78.Models.eventLog>
 @{
     ViewData["Title"] = "Báo cáo vào/ra";
+    var fromDate = ViewBag.FromDate as DateTime? ?? DateTime.Today;
+    var toDate = ViewBag.ToDate as DateTime? ?? DateTime.Today.AddHours(23).AddMinutes(59);
+    var fromDateTime = fromDate.ToString("dd-MM-yyyy HH:mm");
+    var toDateTime = toDate.ToString("dd-MM-yyyy HH:mm");
+    var currentPage = ViewBag.Page as int? ?? 1;
+    var pageSize = ViewBag.PageSize as int? ?? 100;
+    var totalPages = ViewBag.TotalPages as int? ?? 1;
+    var filterType = ViewBag.Filter as string ?? "All";
 }
+
 <div class="row">
     <div>
         <!-- Header section -->
@@ -41,10 +49,7 @@
                                     {
                                         <span class="text-warning">🏃 Về sớm</span>
                                     }
-                                    else
-                                    {
-                                        @item.type_eventLE
-                                    }
+                                   
                                 </td>
                             </tr>
                         }
@@ -63,3 +68,24 @@
 
 
 
+    <!-- Phân trang -->
+    @if (totalPages > 1)
+    {
+        <nav aria-label="Page navigation" class="mt-3">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                    <a class="page-link" href="@Url.Action("Index", new { fromDate = fromDateTime, toDate = toDateTime, filterType = filterType, page = currentPage - 1, pageSize = pageSize })">Trước</a>
+                </li>
+                @for (int i = 1; i <= totalPages; i++)
+                {
+                    <li class="page-item @(i == currentPage ? "active" : "")">
+                        <a class="page-link" href="@Url.Action("Index", new { fromDate = fromDateTime, toDate = toDateTime, filterType = filterType, page = i, pageSize = pageSize })">@i</a>
+                    </li>
+                }
+                <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                    <a class="page-link" href="@Url.Action("Index", new { fromDate = fromDateTime, toDate = toDateTime, filterType = filterType, page = currentPage + 1, pageSize = pageSize })">Sau</a>
+                </li>
+            </ul>
+        </nav>
+    }
+</div>

@@ -1,12 +1,13 @@
 {
+  "location_id": "8d2419c5209641f587f64b5c320ad42c",
   "cameras": [
     {
-      "source_id": "6f675826-ced1-4d46-809d-c2dac9bd5f9b",
+      "source_id": "20942d244262473f901b1b12acbb209a",
       "name": "Camera CheckIn",
       "type": "in"
     },
     {
-      "source_id": "b4fdc591-ac07-4d19-99d2-eee321739daf",
+      "source_id": "22cba9e34d4c42429b9428a0b16248a4",
       "name": "Camera CheckOut",
       "type": "out"
     }

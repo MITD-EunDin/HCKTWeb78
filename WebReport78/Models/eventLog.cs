@@ -3,7 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 namespace WebReport78.Models
 {
     [BsonIgnoreExtraElements]
-    public class DbWeSmart
+    public class eventLog
     {
         //[BsonId] // MongoDB tự quản lý _id
         //[BsonRepresentation(BsonType.ObjectId)]
@@ -17,6 +17,9 @@ namespace WebReport78.Models
 
         [BsonElement("guid")]
         public string userGuid { get; set; }
+
+        [BsonElement("location_id")]
+        public string locationId { get; set; }
 
         [BsonElement("source_id")] 
         public string sourceID { get; set; }

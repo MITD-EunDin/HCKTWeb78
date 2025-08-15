@@ -6,6 +6,9 @@ using System.Text.Json;
 using WebReport78.Services;
 using MongoDB.Driver;
 using System.Globalization;
+using MongoDB.Bson;
+using Microsoft.EntityFrameworkCore; // Thêm để dùng CountAsync, ToListAsync
+
 namespace WebReport78.Controllers
 {
     public class InOutController : Controller
@@ -31,6 +34,7 @@ namespace WebReport78.Controllers
 
         private class CameraSettings
         {
+            public string location_id { get; set; }
             public List<CameraSetting> cameras { get; set; }
         }
 
@@ -50,7 +54,7 @@ namespace WebReport78.Controllers
             // Chuyển đổi DateTime sang Unix timestamp (số giây kể từ 1/1/1970 00:00:00 UTC)
             return (long)(dateTime.ToUniversalTime() - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
         }
-        public IActionResult Index(string fromDate, string toDate, string filterType = "All")
+        public async Task<IActionResult> Index(string fromDate, string toDate, string filterType = "All", int page = 1, int pageSize = 100)
         {
 
             // Parse date range
@@ -60,15 +64,15 @@ namespace WebReport78.Controllers
             var cameraSettings = LoadCameraSettings();
             var checkInCamera = cameraSettings.cameras.FirstOrDefault(c => c.type == "in")?.source_id;
             var checkOutCamera = cameraSettings.cameras.FirstOrDefault(c => c.type == "out")?.source_id;
+            var locationId = cameraSettings.location_id;
 
             // tính quân số, số khách trong ngày
             DateTime today = DateTime.Today;
-            int soldierTotal = _context.Staff.Count(s => s.IdTypePerson.HasValue && (s.IdTypePerson.Value == 0 || s.IdTypePerson.Value == 2));
-            int guestCount = _context.Staff.Count(s => s.IdTypePerson.HasValue && s.IdTypePerson.Value == 3 && s.DateCreated.HasValue && s.DateCreated.Value.Date == today);
-            //int soldierCurrent = CalculateCurrentSoldiers(fromTimestamp, toTimestamp, checkInCamera, checkOutCamera);
+            int soldierTotal = await _context.Staff.CountAsync(s => s.IdTypePerson.HasValue && (s.IdTypePerson.Value == 0 || s.IdTypePerson.Value == 2));
+            int guestCount = await _context.Staff.CountAsync(s => s.IdTypePerson.HasValue && s.IdTypePerson.Value == 3 && s.DateCreated.HasValue && s.DateCreated.Value.Date == today);
             long todayFromTs = ConvertToUnixTimestamp(today);
             long todayToTs = ConvertToUnixTimestamp(today.AddHours(23).AddMinutes(59));
-            int soldierCurrentToday = CalculateCurrentSoldiers(todayFromTs, todayToTs, checkInCamera, checkOutCamera);
+            int soldierCurrentToday = await CalculateCurrentSoldiers(todayFromTs, todayToTs, checkInCamera, checkOutCamera, locationId);
 
             // set giá trị để hiện ra table
             ViewData["SoldierTotal"] = soldierTotal;
@@ -77,20 +81,42 @@ namespace WebReport78.Controllers
             ViewBag.FromDate = parsedFromDate;
             ViewBag.ToDate = parsedToDate;
             ViewBag.Filter = filterType;
+            ViewBag.Page = page;
+            ViewBag.PageSize = pageSize;
 
             // Lấy và thực thi dữ liệu event log
-            var collection = _mongoService.GetCollection<DbWeSmart>("dbwesmart");
-            var data = collection.Find(x => x.time_stamp >= fromTimestamp && x.time_stamp <= toTimestamp).ToList();
+            //var collection = _mongoService.GetCollection<eventLog>("EventLog");
+            //var data = collection.Find(x => x.time_stamp >= fromTimestamp && x.time_stamp <= toTimestamp).ToList();
 
+            // Lấy và thực thi dữ liệu event log, lọc thêm theo location_id và sourceID chỉ thuộc 2 camera
+            var collection = _mongoService.GetCollection<eventLog>("EventLog");
+            var filter = Builders<eventLog>.Filter.And(
+                Builders<eventLog>.Filter.Gte(x => x.time_stamp, fromTimestamp),
+                Builders<eventLog>.Filter.Lte(x => x.time_stamp, toTimestamp),
+                Builders<eventLog>.Filter.Eq(x => x.locationId, locationId),
+                Builders<eventLog>.Filter.In(x => x.sourceID, new[] { checkInCamera, checkOutCamera })
+            );
+            var totalRecords = await collection.CountDocumentsAsync(filter);
+            var data = await collection.Find(filter)
+                                      .SortBy(x => x.time_stamp)
+                                      .Skip((page - 1) * pageSize)
+                                      .Limit(pageSize)
+                                      .ToListAsync();
+
+            ViewBag.TotalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
             ProcessEventLog(data, checkInCamera, checkOutCamera, parsedFromDate, parsedToDate);
 
-            // thực thi lọc
+            // Lọc theo filterType
             if (filterType == "Late")
+            {
                 data = data.Where(x => x.type_eventLE == "L").ToList();
+            }
             else if (filterType == "Early")
+            {
                 data = data.Where(x => x.type_eventLE == "E").ToList();
+            }
 
-            // lưu vào phiên session để export
+            // Lưu vào session để export
             SaveToSession(data, soldierTotal, soldierCurrentToday, guestCount, filterType);
 
             return View(data);
@@ -131,25 +157,27 @@ namespace WebReport78.Controllers
             var cameraSettingsJson = System.IO.File.ReadAllText(settingcamera);
             return JsonSerializer.Deserialize<CameraSettings>(cameraSettingsJson);
         }
-        private int CalculateCurrentSoldiers(long fromTimestamp, long toTimestamp, string checkInCamera, string checkOutCamera)
+        private async Task<int> CalculateCurrentSoldiers(long fromTimestamp, long toTimestamp, string checkInCamera, string checkOutCamera, string locationId)
         {
-            // Lấy danh sách GuidStaff của nhân viên có IdTypePerson == 0 hoặc 2
-            var staffGuids = _context.Staff
+            var staffGuids = await _context.Staff
                 .Where(s => s.IdTypePerson.HasValue && (s.IdTypePerson.Value == 0 || s.IdTypePerson.Value == 2))
                 .Select(s => s.GuidStaff)
-                .ToList();
+                .ToListAsync();
 
-            // Lấy tất cả bản ghi check-in và check-out trong khoảng thời gian
-            var records = _mongoService.GetCollection<DbWeSmart>("dbwesmart")
-                .Find(x => x.time_stamp >= fromTimestamp && x.time_stamp <= toTimestamp &&
-                           (x.sourceID == checkInCamera || x.sourceID == checkOutCamera) &&
-                           staffGuids.Contains(x.userGuid))
-                .ToList()
-                .OrderBy(x => x.time_stamp) // Sắp xếp theo thời gian để xử lý tuần tự
-                .ToList();
+            var filter = Builders<eventLog>.Filter.And(
+                Builders<eventLog>.Filter.Gte(x => x.time_stamp, fromTimestamp),
+                Builders<eventLog>.Filter.Lte(x => x.time_stamp, toTimestamp),
+                Builders<eventLog>.Filter.Eq(x => x.locationId, locationId),
+                Builders<eventLog>.Filter.In(x => x.sourceID, new[] { checkInCamera, checkOutCamera }),
+                Builders<eventLog>.Filter.In(x => x.userGuid, staffGuids)
+            );
 
-            // Theo dõi trạng thái của từng nhân viên
-            var soldierStatus = new Dictionary<string, bool>(); // true: đang ở trong (check-in), false: đã rời (check-out)
+            var records = await _mongoService.GetCollection<eventLog>("EventLog")
+                .Find(filter)
+                .SortBy(x => x.time_stamp)
+                .ToListAsync();
+
+            var soldierStatus = new Dictionary<string, bool>();
             int soldierCurrent = 0;
 
             foreach (var record in records)
@@ -157,64 +185,163 @@ namespace WebReport78.Controllers
                 var userGuid = record.userGuid;
                 bool isCheckIn = record.sourceID == checkInCamera;
 
-                // Chỉ xử lý nếu nhân viên chưa được theo dõi hoặc trạng thái thay đổi
                 if (!soldierStatus.ContainsKey(userGuid))
                 {
                     if (isCheckIn)
                     {
-                        soldierStatus[userGuid] = true; // Check-in
+                        soldierStatus[userGuid] = true;
                         soldierCurrent++;
                     }
                     else
                     {
-                        soldierStatus[userGuid] = false; // Check-out (không tăng/giảm vì chưa check-in)
+                        soldierStatus[userGuid] = false;
                     }
                 }
                 else
                 {
-                    // Nếu đã có trạng thái, chỉ cập nhật nếu thay đổi
                     if (isCheckIn && !soldierStatus[userGuid])
                     {
-                        soldierStatus[userGuid] = true; // Check-in
+                        soldierStatus[userGuid] = true;
                         soldierCurrent++;
                     }
                     else if (!isCheckIn && soldierStatus[userGuid])
                     {
-                        soldierStatus[userGuid] = false; // Check-out
+                        soldierStatus[userGuid] = false;
                         soldierCurrent--;
                     }
                 }
             }
 
-            return soldierCurrent < 0 ? 0 : soldierCurrent; // Đảm bảo không âm
+            return soldierCurrent < 0 ? 0 : soldierCurrent;
         }
 
-        private void ProcessEventLog(List<DbWeSmart> data, string checkInCamera, string checkOutCamera, DateTime fromDate, DateTime toDate)
-        {
-            var sources = _context.Sources.Select(s => new { s.Guid, s.Name }).ToList();
-            var lateThreshold = fromDate.Date.AddHours(8).AddMinutes(30); // 8:30 AM
-            var earlyThreshold = toDate.Date.AddHours(17).AddMinutes(30); // 5:30 PM
+        //private void ProcessEventLog(List<eventLog> data, string checkInCamera, string checkOutCamera, DateTime fromDate, DateTime toDate)
+        //{
+        //    var sources = _context.Sources.Select(s => new { s.Guid, s.Name }).ToList();
+        //    var lateThreshold = fromDate.Date.AddHours(8).AddMinutes(30); // 8:30 AM
+        //    var earlyThreshold = toDate.Date.AddHours(17).AddMinutes(30); // 5:30 PM
 
-            // Nhóm dữ liệu theo userGuid và ngày (Date) để xử lý check-in/check-out mỗi ngày
+        //    // Nhóm dữ liệu theo userGuid và ngày (Date) để xử lý check-in/check-out mỗi ngày
+        //    var groupedData = data
+        //        .GroupBy(x => new { x.userGuid, Date = DateTimeOffset.FromUnixTimeSeconds(x.time_stamp).ToLocalTime().DateTime.Date })
+        //        .ToList();
+
+        //    foreach (var group in groupedData)
+        //    {
+        //        var userGuid = group.Key.userGuid;
+        //        var date = group.Key.Date;
+
+        //        // Kiểm tra IdTypePerson của nhân viên
+        //        var staff = _context.Staff.FirstOrDefault(s => s.GuidStaff == userGuid);
+        //        bool exclude = staff != null && staff.IdTypePerson == 0; // Bỏ qua nếu IdTypePerson == 0
+
+        //        // Lấy tất cả bản ghi trong ngày cho nhân viên này
+        //        var userRecords = group.ToList();
+
+        //        // Gán thông tin camera và định dạng ngày giờ
+        //        foreach (var item in userRecords)
+        //        {
+        //            var source = sources.FirstOrDefault(s => s.Guid == item.sourceID);
+        //            item.cameraGuid = item.sourceID;
+        //            item.cameraName = source?.Name ?? item.sourceID;
+        //            if (source != null)
+        //            {
+        //                item.sourceID = source.Name;
+        //            }
+        //            item.formatted_date = ConvertTimestamp(item.time_stamp);
+
+        //            // Gán loại sự kiện vào/ra
+        //            if (item.cameraGuid == checkInCamera)
+        //                item.type_eventIO = "In";
+        //            else if (item.cameraGuid == checkOutCamera)
+        //                item.type_eventIO = "Out";
+        //            else
+        //                item.type_eventIO = "N/A";
+
+        //            // Mặc định type_eventLE và trạng thái
+        //            item.type_eventLE = "";
+        //            item.IsLate = false;
+        //            item.IsLeaveEarly = false;
+        //        }
+
+        //        // Nếu nhân viên có IdTypePerson == 0, bỏ qua đánh dấu đi muộn/về sớm
+        //        if (exclude)
+        //        {
+        //            continue;
+        //        }
+
+        //        // Chỉ xử lý cho nhân viên có IdTypePerson == 2
+        //        if (staff != null && staff.IdTypePerson == 2)
+        //        {
+        //            // Lấy check-in đầu tiên trong ngày
+        //            var firstCheckIn = userRecords
+        //                .Where(x => x.type_eventIO == "In")
+        //                .OrderBy(x => x.time_stamp)
+        //                .FirstOrDefault();
+
+        //            if (firstCheckIn != null)
+        //            {
+        //                var checkInTime = DateTimeOffset.FromUnixTimeSeconds(firstCheckIn.time_stamp).ToLocalTime().DateTime;
+        //                if (checkInTime > lateThreshold)
+        //                {
+        //                    firstCheckIn.type_eventLE = "L"; // Đi muộn
+        //                    firstCheckIn.IsLate = true;
+        //                }
+        //            }
+
+        //            // Lấy check-out cuối cùng trong ngày
+        //            var lastCheckOut = userRecords
+        //                .Where(x => x.type_eventIO == "Out")
+        //                .OrderByDescending(x => x.time_stamp)
+        //                .FirstOrDefault();
+
+        //            if (lastCheckOut != null)
+        //            {
+        //                var checkOutTime = DateTimeOffset.FromUnixTimeSeconds(lastCheckOut.time_stamp).ToLocalTime().DateTime;
+        //                if (checkOutTime < earlyThreshold)
+        //                {
+        //                    // Kiểm tra xem có check-in nào sau check-out này nhưng trước 17:30 không
+        //                    var hasLaterCheckIn = userRecords
+        //                        .Any(x => x.type_eventIO == "In" &&
+        //                                  x.time_stamp > lastCheckOut.time_stamp &&
+        //                                  DateTimeOffset.FromUnixTimeSeconds(x.time_stamp).ToLocalTime().DateTime <= earlyThreshold);
+
+        //                    if (!hasLaterCheckIn)
+        //                    {
+        //                        lastCheckOut.type_eventLE = "E"; // Về sớm
+        //                        lastCheckOut.IsLeaveEarly = true;
+        //                    }
+        //                }
+        //            }
+        //        }
+        //    }
+        //}
+        private void ProcessEventLog(List<eventLog> data, string checkInCamera, string checkOutCamera, DateTime fromDate, DateTime toDate)
+        {
+            _logger.LogInformation("Processing {Count} event logs", data.Count);
+            var sources = _context.Sources.Select(s => new { s.Guid, s.Name }).ToList();
+            var lateThreshold = fromDate.Date.AddHours(8).AddMinutes(30);
+            var earlyThreshold = toDate.Date.AddHours(17).AddMinutes(30);
+
             var groupedData = data
                 .GroupBy(x => new { x.userGuid, Date = DateTimeOffset.FromUnixTimeSeconds(x.time_stamp).ToLocalTime().DateTime.Date })
                 .ToList();
+
+            _logger.LogInformation("Found {GroupCount} groups of events", groupedData.Count);
 
             foreach (var group in groupedData)
             {
                 var userGuid = group.Key.userGuid;
                 var date = group.Key.Date;
-
-                // Kiểm tra IdTypePerson của nhân viên
                 var staff = _context.Staff.FirstOrDefault(s => s.GuidStaff == userGuid);
-                bool exclude = staff != null && staff.IdTypePerson == 0; // Bỏ qua nếu IdTypePerson == 0
-
-                // Lấy tất cả bản ghi trong ngày cho nhân viên này
+                bool exclude = staff != null && staff.IdTypePerson == 0;
                 var userRecords = group.ToList();
 
-                // Gán thông tin camera và định dạng ngày giờ
+                _logger.LogInformation("Processing userGuid: {UserGuid}, Date: {Date}, Records: {RecordCount}, Exclude: {Exclude}", userGuid, date, userRecords.Count, exclude);
+
                 foreach (var item in userRecords)
                 {
+                    //so sánh id camera và gán name
                     var source = sources.FirstOrDefault(s => s.Guid == item.sourceID);
                     item.cameraGuid = item.sourceID;
                     item.cameraName = source?.Name ?? item.sourceID;
@@ -224,7 +351,7 @@ namespace WebReport78.Controllers
                     }
                     item.formatted_date = ConvertTimestamp(item.time_stamp);
 
-                    // Gán loại sự kiện vào/ra
+                    // phân loại nhận diện vào hay ra
                     if (item.cameraGuid == checkInCamera)
                         item.type_eventIO = "In";
                     else if (item.cameraGuid == checkOutCamera)
@@ -232,19 +359,18 @@ namespace WebReport78.Controllers
                     else
                         item.type_eventIO = "N/A";
 
-                    // Mặc định type_eventLE và trạng thái
                     item.type_eventLE = "";
                     item.IsLate = false;
                     item.IsLeaveEarly = false;
+
+                    _logger.LogInformation("Event: userGuid={UserGuid}, time_stamp={TimeStamp}, sourceID={SourceID}, type_eventIO={TypeEventIO}", item.userGuid, item.time_stamp, item.sourceID, item.type_eventIO);
                 }
 
-                // Nếu nhân viên có IdTypePerson == 0, bỏ qua đánh dấu đi muộn/về sớm
                 if (exclude)
                 {
                     continue;
                 }
 
-                // Chỉ xử lý cho nhân viên có IdTypePerson == 2
                 if (staff != null && staff.IdTypePerson == 2)
                 {
                     // Lấy check-in đầu tiên trong ngày
@@ -253,13 +379,15 @@ namespace WebReport78.Controllers
                         .OrderBy(x => x.time_stamp)
                         .FirstOrDefault();
 
+                    // Gán mác "đi muộn" cho check-in đầu tiên nếu muộn hơn 8:30
                     if (firstCheckIn != null)
                     {
                         var checkInTime = DateTimeOffset.FromUnixTimeSeconds(firstCheckIn.time_stamp).ToLocalTime().DateTime;
                         if (checkInTime > lateThreshold)
                         {
-                            firstCheckIn.type_eventLE = "L"; // Đi muộn
+                            firstCheckIn.type_eventLE = "L";
                             firstCheckIn.IsLate = true;
+                            _logger.LogInformation("Marked as Late: userGuid={UserGuid}, checkInTime={CheckInTime}", userGuid, checkInTime);
                         }
                     }
 
@@ -269,6 +397,7 @@ namespace WebReport78.Controllers
                         .OrderByDescending(x => x.time_stamp)
                         .FirstOrDefault();
 
+                    // Gán mác "về sớm" hoặc "check-out bình thường"
                     if (lastCheckOut != null)
                     {
                         var checkOutTime = DateTimeOffset.FromUnixTimeSeconds(lastCheckOut.time_stamp).ToLocalTime().DateTime;
@@ -282,16 +411,27 @@ namespace WebReport78.Controllers
 
                             if (!hasLaterCheckIn)
                             {
-                                lastCheckOut.type_eventLE = "E"; // Về sớm
+                                lastCheckOut.type_eventLE = "E";
                                 lastCheckOut.IsLeaveEarly = true;
+                                _logger.LogInformation("Marked as Early: userGuid={UserGuid}, checkOutTime={CheckOutTime}", userGuid, checkOutTime);
                             }
+                            else
+                            {
+                                lastCheckOut.type_eventLE = "O"; // Check-out bình thường nếu có check-in sau
+                                _logger.LogInformation("Marked as Normal Check-out: userGuid={UserGuid}, checkOutTime={CheckOutTime}", userGuid, checkOutTime);
+                            }
+                        }
+                        else
+                        {
+                            lastCheckOut.type_eventLE = "O"; // Check-out bình thường nếu sau 17:30
+                            _logger.LogInformation("Marked as Normal Check-out: userGuid={UserGuid}, checkOutTime={CheckOutTime}", userGuid, checkOutTime);
                         }
                     }
                 }
             }
         }
 
-        private void SaveToSession(List<DbWeSmart> data, int soldierTotal, int soldierCurrent, int guestCount, string filterType)
+        private void SaveToSession(List<eventLog> data, int soldierTotal, int soldierCurrent, int guestCount, string filterType)
         {
             HttpContext.Session.SetString("SoldierTotal", soldierTotal.ToString());
             HttpContext.Session.SetString("SoldierCurrent", soldierCurrent.ToString());
@@ -382,7 +522,7 @@ namespace WebReport78.Controllers
                 }
                 // xuất file excel
                 stream.Position = 0;
-                
+
                 return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
 
             }
