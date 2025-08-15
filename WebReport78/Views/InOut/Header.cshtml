@@ -1,0 +1,67 @@
+﻿@{
+    // Chuyển đổi format cho datetime-local input (dd/MM/yyyy HH:mm)
+    // var fromDateTime = ViewBag.FromDate?.ToString("dd/MM/yyyy HH:mm") ?? DateTime.Today.ToString("dd/MM/yyyy HH:mm");
+    // var toDateTime = ViewBag.ToDate?.ToString("dd/MM/yyyy HH:mm") ?? DateTime.Today.AddHours(23).AddMinutes(59).ToString("dd/MM/yyyy HH:mm");
+    
+    // Đảm bảo ViewBag.FromDate và ViewBag.ToDate là DateTime hoặc có giá trị mặc định
+    var fromDate = ViewBag.FromDate as DateTime? ?? DateTime.Today;
+    var toDate = ViewBag.ToDate as DateTime? ?? DateTime.Today.AddHours(23).AddMinutes(59);
+    // Định dạng cho datetime-local (yyyy-MM-ddTHH:mm)
+    var fromDateTime = fromDate.ToString("dd-MM-yyyy HH:mm");
+    var toDateTime = toDate.ToString("dd-MM-yyyy HH:mm");
+    // yyyy - MM - dd HH: mm
+}
+
+<div class="mb-4">
+
+    <!-- Form tìm kiếm - Không cần JavaScript -->
+    <form asp-action="Index" method="get">
+        <div class="row align-items-end">
+            <div class="col-md-1">
+                <label class="form-label">Quân số:</label>
+                <span  class="form-control">
+                    <text id="SoldierCurrent" >@ViewData["SoldierCurrent"]</text>
+                    <text>/</text>
+                    <text id="SoldierTotal">@ViewData["SoldierTotal"]</text>
+                </span>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label">Số khách:</label>
+                <span id="guestCount" class="form-control">@ViewData["GuestCount"]</span>
+            </div>
+            <div class="col-md-2">
+                <label for="fromDate" class="form-label">Từ:</label>
+                <input type="datetime" id="fromDate" name="fromDate" class="form-control" value="@fromDateTime" required
+                       oninvalid="this.setCustomValidity('Vui lòng không bỏ trống')"
+                       oninput="this.setCustomValidity('')" />
+            </div>
+            <div class="col-md-2">
+                <label for="toDate" class="form-label">Đến:</label>
+                <input type="datetime" id="toDate" name="toDate" class="form-control" value="@toDateTime"
+                       oninvalid="this.setCustomValidity('Vui lòng không bỏ trống')"
+                       oninput="this.setCustomValidity('')" />
+            </div>
+
+            <div class="col-md-2">
+                <label for="filterType" class="form-label">Lọc Dữ liệu:</label>
+                <select id="filterType" name="filterType" class="form-control">
+                    <option value="All" selected="@(ViewBag.Filter == "All" || ViewBag.Filter == null)">Tất Cả</option>
+                    <option value="Late" selected="@(ViewBag.Filter == "Late")">Đi Muộn</option>
+                    <option value="Early" selected="@(ViewBag.Filter == "Early")">Về Sớm</option>
+                </select>
+            </div>
+
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" id="searchBtn" class="btn btn-primary w-100">
+                    Tìm Kiếm
+                </button>
+                <button type="button"
+                        data-bs-toggle="modal"
+                        data-bs-target="#exportModal"
+                        class="btn btn-success w-100">
+                    Xuất Excel
+                </button>
+            </div>
+        </div>
+    </form>
+</div>

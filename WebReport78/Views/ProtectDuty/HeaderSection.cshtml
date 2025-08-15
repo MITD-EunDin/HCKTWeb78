@@ -1,0 +1,36 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+}
+<div class="mb-4">
+    <div class="row g-2 align-items-end">
+        <form asp-action="Index" method="get" class="col-md-10 row gap-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Chọn tháng</label>
+                <input type="month" class="form-control" lang="vi" name="monthYearImport"
+                       value="@ViewData["monthYearImport"]" required />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class=" col-md-2 btn btn-success w-100">
+                    Tìm Kiếm
+                </button>
+            </div>
+        </form>
+        <div class="col-md-2">
+            @if (ViewData["CanSave"] is bool canSave && canSave)
+            {
+                <form asp-action="SaveImportData" method="post">
+                    <input type="hidden" name="monthYearImport" value="@ViewData["MonthYearImport"]" />
+                    <button type="submit" class="btn btn-primary w-100">
+                        Lưu
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+</div>
+<!--
+
+             @if (TempData.ContainsKey("ImportedData"))
+-->

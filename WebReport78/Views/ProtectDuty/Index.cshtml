@@ -1,0 +1,93 @@
+﻿@{
+    ViewData["Title"] = "Quản lý trực ban";
+    bool disableSave = ViewData["DisableSave"] != null && (bool)ViewData["DisableSave"];
+}
+@model IEnumerable<WebReport78.Models.DutyShift>
+
+<!-- TOAST NOTIFICATIONS -->
+@Html.Partial("_toastNotice")
+<!--Thêm người trực-->
+@Html.Partial("Create")
+<!--Import file xlsx, xls-->
+@Html.Partial("ImportFile")
+<div class="row">
+
+    <!-- Sidebar -->
+    <div class="col-md-2 bg-light sidebar p-3">
+        @Html.Partial("Sidebar")
+    </div>
+
+    <!-- Main content -->
+    <div class="col-md-10">
+
+        <!-- Header section -->
+         @Html.Partial("HeaderSection")
+            <!--Body Danh sách lịch trực-->
+        <div class="table-responsive table-scroll">
+            <table class="table table-bordered table-hover">
+                <thead class="table-light sticky-top">
+                    <tr>
+                        <th>STT</th>
+                        <th>Ngày trực</th>
+                        <th>Họ và tên</th>
+                        <th>Cấp bậc</th>
+                        <th>Đơn vị</th>
+                        <th>ĐT cá nhân</th>
+                        <th>Hành Động</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    @if (Model != null && Model.Any())
+                    {
+                        int countRow = 1;
+                        foreach (var duty in Model)
+                        {
+                            <tr>
+                                <td>@countRow</td>
+                                <td>@duty.Dateduty.ToString("dd-MM-yyyy")</td>
+                                <td>@duty.Fullname</td>
+                                <td>@duty.Rankk</td>
+                                <td>@duty.Department</td>
+                                <td>@duty.Phonenumber</td>
+                                <td>
+                                    <button class="btn btn-sm btn-warning edit-btn" data-id="@duty.Id"
+                                    @(disableSave ? "disabled" : "")>
+                                        Sửa
+                                    </button>
+                                    <a asp-action="Delete" asp-controller="ProtectDuty" asp-route-id="@duty.Id"
+                                       class="btn btn-sm btn-danger @(disableSave ? "disabled" : "")"
+                                       onclick="return confirm('Bạn có chắc chắn muốn xóa bản ghi này?')">Xóa
+                                   </a>
+                                </td>
+                            </tr>
+                            countRow++;
+                        }
+                    }
+                    else
+                    {
+                        <tr><td colspan="7" class="text-center">Không có dữ liệu</td></tr>
+                    }
+
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <!-- Placeholder cho modal Edit (load động qua AJAX) -->
+    <div id="editModalPlaceholder"></div>
+</div>
+
+<style>
+    .bg_light {
+        color: #f8f9fa !important;
+    }
+
+    thead tr th:last-child {
+        width: 103px;
+    }
+
+    thead tr th:first-child {
+        width: 50px;
+    }
+</style>
+

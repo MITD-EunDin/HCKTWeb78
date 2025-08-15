@@ -1,0 +1,14 @@
+{
+  "cameras": [
+    {
+      "source_id": "6f675826-ced1-4d46-809d-c2dac9bd5f9b",
+      "name": "Camera CheckIn",
+      "type": "in"
+    },
+    {
+      "source_id": "b4fdc591-ac07-4d19-99d2-eee321739daf",
+      "name": "Camera CheckOut",
+      "type": "out"
+    }
+  ]
+}

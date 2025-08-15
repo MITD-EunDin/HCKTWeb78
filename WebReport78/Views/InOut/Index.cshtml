@@ -1,0 +1,65 @@
+﻿
+ @model List<WebReport78.Models.DbWeSmart>
+@{
+    ViewData["Title"] = "Báo cáo vào/ra";
+}
+<div class="row">
+    <div>
+        <!-- Header section -->
+        @Html.Partial("Header")
+        <!--ExportReport-->
+        @Html.Partial("ExportReport")
+
+        <!-- Table section -->
+        <div class="table-responsive table-scroll" style="height: 70vh;">
+            <table class="table table-bordered table-hover">
+                <thead class="table-light sticky-top">
+                    <tr>
+                        <th>Tên</th>
+                        <th>Thời gian</th>
+                        <th>Loại ra/vào</th>
+                        <th>Camera nhận dạng</th>
+                        <th>Sự kiện</th>
+                    </tr>
+                </thead>
+                <tbody id="inOutTableBody">
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var item in Model)
+                        {
+                            <tr>
+                                <td>@item.Name</td>
+                                <td>@item.formatted_date</td>
+                                <td>@item.type_eventIO</td>
+                                <td>@item.sourceID</td>
+                                <td>
+                                    @if (item.type_eventLE == "L")
+                                    {
+                                        <span class="text-danger">⏰ Đi muộn</span>
+                                    }
+                                    else if (item.type_eventLE == "E")
+                                    {
+                                        <span class="text-warning">🏃 Về sớm</span>
+                                    }
+                                    else
+                                    {
+                                        @item.type_eventLE
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="5">Không có dữ liệu nhân viên.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+

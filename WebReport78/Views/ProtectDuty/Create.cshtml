@@ -1,0 +1,55 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+}
+<!-- Create Modal -->
+<div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createModalLabel">Thêm người trực</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form asp-action="Create" asp-controller="ProtectDuty" method="post">
+                    <input type="hidden" name="monthYearImport" value="@ViewData["MonthYearImport"]" />
+                    <div class="mb-3">
+                        <label for="createDay" class="form-label">Ngày trực</label>
+                        <input type="date" class="form-control" id="createDay" name="Dateduty" required 
+                                oninvalid="this.setCustomValidity('Vui lòng chọn ngày trực')"
+                                oninput="this.setCustomValidity('')" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="createName" class="form-label">Họ và tên</label>
+                        <input type="text" class="form-control" id="createName" name="Fullname" required
+                               oninvalid="this.setCustomValidity('Vui lòng nhập tên')"
+                               oninput="this.setCustomValidity('')" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="createRank" class="form-label">Cấp bậc</label>
+                        <input type="text" class="form-control" id="createRank" name="Rankk" required
+                               oninvalid="this.setCustomValidity('Vui lòng nhập cấp bậc')"
+                               oninput="this.setCustomValidity('')" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="createDepartment" class="form-label">Đơn vị</label>
+                        <input type="text" class="form-control" id="createDepartment" name="Department" required
+                               oninvalid="this.setCustomValidity('Vui lòng nhập đơn vị')"
+                               oninput="this.setCustomValidity('')" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="createPhone" class="form-label">ĐT cá nhân</label>
+                        <input type="text" class="form-control" id="createPhone" name="Phonenumber" required
+                               oninvalid="this.setCustomValidity('Vui lòng nhập số điện thoại')"
+                               oninput="this.setCustomValidity('')" />
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary">Thêm</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

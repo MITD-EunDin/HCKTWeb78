@@ -1,0 +1,63 @@
+﻿
+@model WebReport78.Models.DutyShift
+
+@{
+    // TimeOnly newtime = new TimeOnly();
+}
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editModalLabel">Chỉnh sửa thông tin</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form asp-action="Edit" asp-controller="ProtectDuty" method="post">
+                    <input type="hidden" name="Id" value="@Model?.Id" />
+                    <input type="hidden" name="monthYearImport" value="@ViewData["MonthYearImport"]" />
+                    <div class="mb-3">
+                        <label for="editDay" class="form-label">Ngày trực</label>
+                        <input type="date" class="form-control" id="editDay" name="Dateduty"
+                               value="@Model?.Dateduty.ToString("yyyy-MM-dd")" required 
+                               oninvalid="this.setCustomValidity('Vui lòng chọn ngày trực')"
+                               oninput="this.setCustomValidity('')" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="editName" class="form-label">Họ và tên</label>
+                        <input type="text" class="form-control" id="editName" name="Fullname"
+                               value="@Model?.Fullname" required 
+                               oninvalid="this.setCustomValidity('Vui lòng nhập tên')"
+                               oninput="this.setCustomValidity('')" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="editRank" class="form-label">Cấp bậc</label>
+                        <input type="text" class="form-control" id="editRank" name="Rankk"
+                               value="@Model?.Rankk" 
+                               oninvalid="this.setCustomValidity('Vui lòng nhập cấp bậc')"
+                               oninput="this.setCustomValidity('')" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="editDepartment" class="form-label">Đơn vị</label>
+                        <input type="text" class="form-control" id="editDepartment" name="Department"
+                               value="@Model?.Department"
+                               oninvalid="this.setCustomValidity('Vui lòng nhập đơn vị')"
+                               oninput="this.setCustomValidity('')" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="editPhone" class="form-label">ĐT cá nhân</label>
+                        <input type="text" class="form-control" id="editPhone" name="Phonenumber"
+                               value="@Model?.Phonenumber" 
+                               oninvalid="this.setCustomValidity('Vui lòng nhập số điện thoại')"
+                               oninput="this.setCustomValidity('')" />
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary">Lưu</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

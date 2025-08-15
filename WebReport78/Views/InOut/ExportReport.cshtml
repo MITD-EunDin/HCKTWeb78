@@ -1,0 +1,36 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+
+@{
+    // var fromDateTime = DateTime.Today.ToString("yyyy-MM-ddTHH:mm");
+    // var toDateTime = DateTime.Today.AddHours(23).AddMinutes(59).ToString("yyyy-MM-ddTHH:mm");
+}
+<!-- Export Modal -->
+<div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="closeForm" asp-action="ExReport" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exportModalLabel">Xuất báo cáo Excel</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="note" class="form-label">Ghi chú (nếu có)</label>
+                        <textarea class="form-control" id="note" name="note" rows="3" placeholder="Nhập ghi chú tại đây..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success">Xuất Excel</button>
+                    <button id="closeButton" type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                </div>
+                <!-- Hidden fields để truyền dữ liệu -->
+                <input type="hidden" name="fromDate" value="@(((DateTime)ViewBag.FromDate).ToString("dd-MM-yyyy HH:mm"))" />
+                <input type="hidden" name="toDate" value="@(((DateTime)ViewBag.ToDate).ToString("dd-MM-yyyy HH:mm"))" />
+                <input type="hidden" name="filterType" value="@ViewBag.Filter" />
+            </form>
+        </div>
+    </div>
+</div>
+
