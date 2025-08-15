@@ -1,4 +1,5 @@
 # HCKTWeb78
+```
 ├── Controllers         
 ├──── InOutController.cs                   // báo cáo vào ra    
 ├──── ProtectDutyController.cs             // trực ban
@@ -30,7 +31,8 @@
 ├── appsettings.json
 ├── efpt.config.json
 ├── Program.cs
-└── settingcamera.json                  // thay source_id bằng source_id của camera nhận diện tương ứng  
+└── settingcamera.json                  // thay source_id bằng source_id của camera nhận diện tương ứng
+```
 
 # Các phần cần sửa
 - Sửa connectstring và database name trong appsetting.json phần MongoDb
