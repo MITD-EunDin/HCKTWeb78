@@ -413,18 +413,15 @@ namespace WebReport78.Controllers
                             {
                                 lastCheckOut.type_eventLE = "E";
                                 lastCheckOut.IsLeaveEarly = true;
-                                _logger.LogInformation("Marked as Early: userGuid={UserGuid}, checkOutTime={CheckOutTime}", userGuid, checkOutTime);
                             }
                             else
                             {
                                 lastCheckOut.type_eventLE = "O"; // Check-out bình thường nếu có check-in sau
-                                _logger.LogInformation("Marked as Normal Check-out: userGuid={UserGuid}, checkOutTime={CheckOutTime}", userGuid, checkOutTime);
                             }
                         }
                         else
                         {
                             lastCheckOut.type_eventLE = "O"; // Check-out bình thường nếu sau 17:30
-                            _logger.LogInformation("Marked as Normal Check-out: userGuid={UserGuid}, checkOutTime={CheckOutTime}", userGuid, checkOutTime);
                         }
                     }
                 }
