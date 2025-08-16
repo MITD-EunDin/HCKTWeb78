@@ -141,10 +141,7 @@ namespace WebReport78.Controllers
                                 var parsedDate = ParseExcelCellAsText(worksheet.Cells[row, 1], row);
                                 var duties = new DutyShift
                                 {
-                                    //Id = int.Parse(worksheet.Cells[row, 1].Text),
-                                    //Dateduty = DateOnly.FromDateTime(worksheet.Cells[row, 1].GetValue<DateTime>()),
                                     Dateduty = DateOnly.FromDateTime(parsedDate),
-                                    //Dateduty = parsedDate,
                                     Fullname = worksheet.Cells[row, 2].Text?.Trim() ?? "",
                                     Rankk = worksheet.Cells[row, 3].Text?.Trim() ?? "",
                                     Department = worksheet.Cells[row, 4].Text?.Trim() ?? "",

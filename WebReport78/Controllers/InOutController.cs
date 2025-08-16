@@ -51,7 +51,7 @@ namespace WebReport78.Controllers
         }
         private long ConvertToUnixTimestamp(DateTime dateTime)
         {
-            // Chuyển đổi DateTime sang Unix timestamp (số giây kể từ 1/1/1970 00:00:00 UTC)
+            // Chuyển đổi DateTime sang Unix timestamp 
             return (long)(dateTime.ToUniversalTime() - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
         }
         public async Task<IActionResult> Index(string fromDate, string toDate, string filterType = "All", int page = 1, int pageSize = 100)
@@ -83,10 +83,6 @@ namespace WebReport78.Controllers
             ViewBag.Filter = filterType;
             ViewBag.Page = page;
             ViewBag.PageSize = pageSize;
-
-            // Lấy và thực thi dữ liệu event log
-            //var collection = _mongoService.GetCollection<eventLog>("EventLog");
-            //var data = collection.Find(x => x.time_stamp >= fromTimestamp && x.time_stamp <= toTimestamp).ToList();
 
             // Lấy và thực thi dữ liệu event log, lọc thêm theo location_id và sourceID chỉ thuộc 2 camera
             var collection = _mongoService.GetCollection<eventLog>("EventLog");
@@ -214,108 +210,6 @@ namespace WebReport78.Controllers
 
             return soldierCurrent < 0 ? 0 : soldierCurrent;
         }
-
-        //private void ProcessEventLog(List<eventLog> data, string checkInCamera, string checkOutCamera, DateTime fromDate, DateTime toDate)
-        //{
-        //    var sources = _context.Sources.Select(s => new { s.Guid, s.Name }).ToList();
-        //    var lateThreshold = fromDate.Date.AddHours(8).AddMinutes(30); // 8:30 AM
-        //    var earlyThreshold = toDate.Date.AddHours(17).AddMinutes(30); // 5:30 PM
-
-        //    // Nhóm dữ liệu theo userGuid và ngày (Date) để xử lý check-in/check-out mỗi ngày
-        //    var groupedData = data
-        //        .GroupBy(x => new { x.userGuid, Date = DateTimeOffset.FromUnixTimeSeconds(x.time_stamp).ToLocalTime().DateTime.Date })
-        //        .ToList();
-
-        //    foreach (var group in groupedData)
-        //    {
-        //        var userGuid = group.Key.userGuid;
-        //        var date = group.Key.Date;
-
-        //        // Kiểm tra IdTypePerson của nhân viên
-        //        var staff = _context.Staff.FirstOrDefault(s => s.GuidStaff == userGuid);
-        //        bool exclude = staff != null && staff.IdTypePerson == 0; // Bỏ qua nếu IdTypePerson == 0
-
-        //        // Lấy tất cả bản ghi trong ngày cho nhân viên này
-        //        var userRecords = group.ToList();
-
-        //        // Gán thông tin camera và định dạng ngày giờ
-        //        foreach (var item in userRecords)
-        //        {
-        //            var source = sources.FirstOrDefault(s => s.Guid == item.sourceID);
-        //            item.cameraGuid = item.sourceID;
-        //            item.cameraName = source?.Name ?? item.sourceID;
-        //            if (source != null)
-        //            {
-        //                item.sourceID = source.Name;
-        //            }
-        //            item.formatted_date = ConvertTimestamp(item.time_stamp);
-
-        //            // Gán loại sự kiện vào/ra
-        //            if (item.cameraGuid == checkInCamera)
-        //                item.type_eventIO = "In";
-        //            else if (item.cameraGuid == checkOutCamera)
-        //                item.type_eventIO = "Out";
-        //            else
-        //                item.type_eventIO = "N/A";
-
-        //            // Mặc định type_eventLE và trạng thái
-        //            item.type_eventLE = "";
-        //            item.IsLate = false;
-        //            item.IsLeaveEarly = false;
-        //        }
-
-        //        // Nếu nhân viên có IdTypePerson == 0, bỏ qua đánh dấu đi muộn/về sớm
-        //        if (exclude)
-        //        {
-        //            continue;
-        //        }
-
-        //        // Chỉ xử lý cho nhân viên có IdTypePerson == 2
-        //        if (staff != null && staff.IdTypePerson == 2)
-        //        {
-        //            // Lấy check-in đầu tiên trong ngày
-        //            var firstCheckIn = userRecords
-        //                .Where(x => x.type_eventIO == "In")
-        //                .OrderBy(x => x.time_stamp)
-        //                .FirstOrDefault();
-
-        //            if (firstCheckIn != null)
-        //            {
-        //                var checkInTime = DateTimeOffset.FromUnixTimeSeconds(firstCheckIn.time_stamp).ToLocalTime().DateTime;
-        //                if (checkInTime > lateThreshold)
-        //                {
-        //                    firstCheckIn.type_eventLE = "L"; // Đi muộn
-        //                    firstCheckIn.IsLate = true;
-        //                }
-        //            }
-
-        //            // Lấy check-out cuối cùng trong ngày
-        //            var lastCheckOut = userRecords
-        //                .Where(x => x.type_eventIO == "Out")
-        //                .OrderByDescending(x => x.time_stamp)
-        //                .FirstOrDefault();
-
-        //            if (lastCheckOut != null)
-        //            {
-        //                var checkOutTime = DateTimeOffset.FromUnixTimeSeconds(lastCheckOut.time_stamp).ToLocalTime().DateTime;
-        //                if (checkOutTime < earlyThreshold)
-        //                {
-        //                    // Kiểm tra xem có check-in nào sau check-out này nhưng trước 17:30 không
-        //                    var hasLaterCheckIn = userRecords
-        //                        .Any(x => x.type_eventIO == "In" &&
-        //                                  x.time_stamp > lastCheckOut.time_stamp &&
-        //                                  DateTimeOffset.FromUnixTimeSeconds(x.time_stamp).ToLocalTime().DateTime <= earlyThreshold);
-
-        //                    if (!hasLaterCheckIn)
-        //                    {
-        //                        lastCheckOut.type_eventLE = "E"; // Về sớm
-        //                        lastCheckOut.IsLeaveEarly = true;
-        //                    }
-        //                }
-        //            }
-        //        }
-        //    }
-        //}
         private void ProcessEventLog(List<eventLog> data, string checkInCamera, string checkOutCamera, DateTime fromDate, DateTime toDate)
         {
             _logger.LogInformation("Processing {Count} event logs", data.Count);
